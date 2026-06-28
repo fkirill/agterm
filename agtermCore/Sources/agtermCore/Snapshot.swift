@@ -88,10 +88,16 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
     public var foregroundCommand: [String]?
     /// The split (right) pane's foreground command (full argv), the split analogue of `foregroundCommand`.
     public var splitForegroundCommand: [String]?
+    /// The session's background watermark (image or rasterized text), or nil for none. Optional so a
+    /// snapshot already on disk before this field was added still decodes (as nil → no watermark) instead
+    /// of failing the load and wiping the saved tree, like the fields above. A `.text` watermark
+    /// re-renders its PNG on restore.
+    public var backgroundWatermark: BackgroundWatermark?
 
     public init(id: UUID, customName: String?, cwd: String, isSplit: Bool? = nil, fontSize: Double? = nil,
                 splitCwd: String? = nil, splitRatio: Double? = nil, flagged: Bool? = nil,
-                foregroundCommand: [String]? = nil, splitForegroundCommand: [String]? = nil) {
+                foregroundCommand: [String]? = nil, splitForegroundCommand: [String]? = nil,
+                backgroundWatermark: BackgroundWatermark? = nil) {
         self.id = id
         self.customName = customName
         self.cwd = cwd
@@ -102,5 +108,6 @@ public struct SessionSnapshot: Codable, Equatable, Sendable {
         self.flagged = flagged
         self.foregroundCommand = foregroundCommand
         self.splitForegroundCommand = splitForegroundCommand
+        self.backgroundWatermark = backgroundWatermark
     }
 }

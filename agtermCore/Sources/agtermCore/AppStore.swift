@@ -244,6 +244,7 @@ public final class AppStore {
         removed.splitSurface?.teardown()
         removed.overlaySurface?.teardown()
         removed.scratchSurface?.teardown()
+        WatermarkStorage.removeRenderedText(sessionID: sessionID) // drop any rendered .text PNG; the session is gone
         sessionRecency.remove(sessionID)
         if wasActive {
             selectedSessionID = reselectionTarget(after: location)
@@ -271,6 +272,7 @@ public final class AppStore {
             session.splitSurface?.teardown()
             session.overlaySurface?.teardown()
             session.scratchSurface?.teardown()
+            WatermarkStorage.removeRenderedText(sessionID: session.id) // drop any rendered .text PNG; the session is gone
             sessionRecency.remove(session.id)
         }
         if focusedWorkspaceID == workspaceID { focusedWorkspaceID = nil } // the focused root is gone
@@ -601,6 +603,16 @@ public final class AppStore {
         save()
     }
 
+    /// Sets (or clears) a session's background watermark and persists it. Clean no-op (no write) for an
+    /// unknown id or when the spec is unchanged, so a repeated `session.background` set is idempotent. The
+    /// app target applies it to the session's surface(s) after this returns (the host-free store owns only
+    /// the spec; the C-boundary apply lives in `ControlServer`/`GhosttySurfaceView`).
+    public func setBackgroundWatermark(_ watermark: BackgroundWatermark?, forSession id: UUID) {
+        guard let session = session(withID: id), session.backgroundWatermark != watermark else { return }
+        session.backgroundWatermark = watermark
+        save()
+    }
+
     /// Unflags every session across all workspaces in one `save()`. No-ops (no write) when nothing is
     /// flagged. Backs the Clear Flagged action and the `session.flag clear` control mode.
     public func clearFlags() {
@@ -644,7 +656,8 @@ public final class AppStore {
                                 splitCwd: session.splitCwd ?? session.initialSplitCwd, splitRatio: session.splitRatio,
                                 flagged: session.flagged,
                                 foregroundCommand: session.foregroundCommand,
-                                splitForegroundCommand: session.splitForegroundCommand)
+                                splitForegroundCommand: session.splitForegroundCommand,
+                                backgroundWatermark: session.backgroundWatermark)
             })
         }
         return Snapshot(selectedSessionID: selectedSessionID, workspaces: workspaceSnapshots,
@@ -674,6 +687,7 @@ public final class AppStore {
                 session.flagged = sessionSnapshot.flagged ?? false
                 session.foregroundCommand = sessionSnapshot.foregroundCommand
                 session.splitForegroundCommand = sessionSnapshot.splitForegroundCommand
+                session.backgroundWatermark = sessionSnapshot.backgroundWatermark
                 return session
             }
             return Workspace(id: workspaceSnapshot.id, name: workspaceSnapshot.name, sessions: sessions)
